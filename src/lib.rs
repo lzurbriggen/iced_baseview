@@ -20,12 +20,16 @@ compile_error!("Can't use both 'wgpu' and 'glow' features");
 #[cfg(not(any(feature = "wgpu", feature = "glow")))]
 compile_error!("Must use either 'wgpu' or 'glow' feature");
 
+pub use iced_futures;
+pub use iced_graphics;
+pub use iced_native;
+
+pub mod application;
 pub mod clipboard;
 pub mod settings;
 pub mod widget;
 pub mod window;
 
-mod application;
 mod conversion;
 mod error;
 mod proxy;
