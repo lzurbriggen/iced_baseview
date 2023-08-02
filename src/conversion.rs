@@ -1,11 +1,12 @@
 use baseview::Event as BaseEvent;
-use iced_core::Point;
-use iced_native::keyboard::Event as IcedKeyEvent;
-use iced_native::keyboard::Modifiers as IcedModifiers;
-use iced_native::mouse::Button as IcedMouseButton;
-use iced_native::mouse::Event as IcedMouseEvent;
-use iced_native::window::Event as IcedWindowEvent;
-use iced_native::Event as IcedEvent;
+use iced_core::{
+    keyboard::Event as IcedKeyEvent,
+    keyboard::Modifiers as IcedModifiers,
+    mouse::Button as IcedMouseButton,
+    mouse::{self, Event as IcedMouseEvent},
+    window::Event as IcedWindowEvent,
+    Event as IcedEvent, Point,
+};
 use keyboard_types::Modifiers as BaseviewModifiers;
 
 pub fn baseview_to_iced_events(
@@ -49,7 +50,7 @@ pub fn baseview_to_iced_events(
                         iced_events.push(event);
                     }
                     iced_events.push(IcedEvent::Mouse(IcedMouseEvent::WheelScrolled {
-                        delta: iced_native::mouse::ScrollDelta::Lines { x, y },
+                        delta: mouse::ScrollDelta::Lines { x, y },
                     }));
                 }
                 baseview::ScrollDelta::Pixels { x, y } => {
@@ -57,7 +58,7 @@ pub fn baseview_to_iced_events(
                         iced_events.push(event);
                     }
                     iced_events.push(IcedEvent::Mouse(IcedMouseEvent::WheelScrolled {
-                        delta: iced_native::mouse::ScrollDelta::Pixels { x, y },
+                        delta: mouse::ScrollDelta::Pixels { x, y },
                     }));
                 }
             },
@@ -142,9 +143,9 @@ fn update_modifiers(
     if *iced_modifiers != new {
         *iced_modifiers = new;
 
-        Some(IcedEvent::Keyboard(
-            iced_native::keyboard::Event::ModifiersChanged(*iced_modifiers),
-        ))
+        Some(IcedEvent::Keyboard(IcedKeyEvent::ModifiersChanged(
+            *iced_modifiers,
+        )))
     } else {
         None
     }
@@ -159,7 +160,7 @@ fn baseview_mouse_button_to_iced(id: baseview::MouseButton) -> IcedMouseButton {
         MouseButton::Right => IcedMouseButton::Right,
         MouseButton::Back => IcedMouseButton::Other(6),
         MouseButton::Forward => IcedMouseButton::Other(7),
-        MouseButton::Other(other_id) => IcedMouseButton::Other(other_id),
+        MouseButton::Other(other_id) => IcedMouseButton::Other(other_id.into()),
     }
 }
 

@@ -2,9 +2,12 @@
 mod state;
 
 use baseview::{EventStatus, Window, WindowScalePolicy};
-use iced_native::event::Status;
-use iced_native::widget::operation;
-use iced_native::{mouse, Command, Debug, Executor, Runtime, Size, Subscription};
+use iced_core::event::Status;
+use iced_core::widget::operation;
+use iced_core::{mouse, Size};
+
+use iced_runtime::{command, user_interface, Debug, UserInterface};
+use iced_style::application::StyleSheet;
 pub use state::State;
 
 use crate::clipboard::{self, Clipboard};
@@ -12,12 +15,9 @@ use crate::settings::IcedBaseviewSettings;
 use crate::window::{IcedWindow, RuntimeEvent, WindowQueue, WindowSubs};
 use crate::{error::Error, proxy::Proxy, Settings};
 
-use iced_futures::futures;
 use iced_futures::futures::channel::mpsc;
+use iced_futures::{futures, Executor, Runtime, Subscription};
 use iced_graphics::{compositor, Viewport};
-use iced_native::user_interface::{self, UserInterface};
-
-pub use iced_native::application::{Appearance, StyleSheet};
 
 use std::cell::RefCell;
 use std::mem::ManuallyDrop;
@@ -36,13 +36,13 @@ use std::rc::Rc;
 /// can be toggled by pressing `F12`.
 pub trait Application: Sized + Send
 where
-    <Self::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <Self::Renderer as iced_core::Renderer>::Theme: StyleSheet,
 {
     /// The data needed to initialize your [`Application`].
     type Flags: Send;
 
     /// The graphics backend to use to draw the [`Program`].
-    type Renderer: iced_native::Renderer;
+    type Renderer: iced_core::Renderer;
 
     /// The type of __messages__ your [`Program`] will produce.
     type Message: std::fmt::Debug + Send;
@@ -55,7 +55,7 @@ where
     /// Additionally, you can return a [`Command`] if you need to perform some
     /// async action in the background on startup. This is useful if you want to
     /// load state from a file, perform an initial HTTP request, etc.
-    fn new(flags: Self::Flags) -> (Self, iced_native::Command<Self::Message>);
+    fn new(flags: Self::Flags) -> (Self, iced_runtime::Command<Self::Message>);
 
     /// Returns the current title of the [`Application`].
     ///
@@ -64,10 +64,10 @@ where
     fn title(&self) -> String;
 
     /// Returns the current `Theme` of the [`Application`].
-    fn theme(&self) -> <Self::Renderer as iced_native::Renderer>::Theme;
+    fn theme(&self) -> <Self::Renderer as iced_core::Renderer>::Theme;
 
     /// Returns the `Style` variation of the `Theme`.
-    fn style(&self) -> <<Self::Renderer as iced_native::Renderer>::Theme as StyleSheet>::Style {
+    fn style(&self) -> <<Self::Renderer as iced_core::Renderer>::Theme as StyleSheet>::Style {
         Default::default()
     }
 
@@ -83,12 +83,12 @@ where
         &mut self,
         window: &mut WindowQueue,
         message: Self::Message,
-    ) -> iced_native::Command<Self::Message>;
+    ) -> iced_runtime::Command<Self::Message>;
 
     /// Returns the widgets to display in the [`Program`].
     ///
     /// These widgets can produce __messages__ based on user interaction.
-    fn view(&self) -> iced_native::Element<'_, Self::Message, Self::Renderer>;
+    fn view(&self) -> iced_core::Element<'_, Self::Message, Self::Renderer>;
 
     /// Returns the event `Subscription` for the current state of the
     /// application.
@@ -144,7 +144,7 @@ where
     A: Application + Send + 'static,
     E: Executor + 'static,
     C: crate::IGCompositor<Renderer = A::Renderer, Settings = crate::renderer::Settings> + 'static,
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: StyleSheet,
 {
     use futures::task;
 
@@ -191,7 +191,8 @@ where
             let window = crate::wrapper::WindowHandleWrapper(window);
             let (mut compositor, renderer) =
                 C::new(renderer_settings, Some(&window)).unwrap();
-            let surface = compositor.create_surface(&window);
+            // TODO: should this take viewport physical dimensions? do we need to update this?
+            let surface = compositor.create_surface(&window, viewport.physical_width(), viewport.physical_height());
         } else {
             let (compositor, renderer) = {
                 let context = window
@@ -260,7 +261,7 @@ async fn run_instance<A, E, C>(
     // mut proxy: winit::event_loop::EventLoopProxy<A::Message>,
     mut debug: Debug,
     mut receiver: mpsc::UnboundedReceiver<RuntimeEvent<A::Message>>,
-    init_command: Command<A::Message>,
+    init_command: iced_runtime::Command<A::Message>,
     // window: Window<'_>,
     // exit_on_close_request: bool,
     mut state: State<A>,
@@ -273,7 +274,7 @@ async fn run_instance<A, E, C>(
     A: Application + 'static,
     E: Executor + 'static,
     C: crate::IGCompositor<Renderer = A::Renderer> + 'static,
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: StyleSheet,
 {
     use iced_futures::futures::stream::StreamExt;
 
@@ -373,8 +374,8 @@ async fn run_instance<A, E, C>(
 
                 debug.event_processing_finished();
 
-                for event in events.drain(..).zip(statuses.into_iter()) {
-                    runtime.broadcast(event);
+                for (event, status) in events.drain(..).zip(statuses.into_iter()) {
+                    runtime.broadcast(event, status);
                 }
 
                 did_process_event = true;
@@ -408,8 +409,8 @@ async fn run_instance<A, E, C>(
 
                     debug.event_processing_finished();
 
-                    for event in events.drain(..).zip(statuses.into_iter()) {
-                        runtime.broadcast(event);
+                    for (event, status) in events.drain(..).zip(statuses.into_iter()) {
+                        runtime.broadcast(event, status);
                     }
                 }
 
@@ -460,7 +461,7 @@ async fn run_instance<A, E, C>(
                 let new_mouse_interaction = user_interface.draw(
                     &mut renderer,
                     state.theme(),
-                    &iced_native::renderer::Style {
+                    &iced_core::renderer::Style {
                         text_color: state.text_color(),
                     },
                     state.cursor_position(),
@@ -511,7 +512,7 @@ async fn run_instance<A, E, C>(
                     let new_mouse_interaction = user_interface.draw(
                         &mut renderer,
                         state.theme(),
-                        &iced_native::renderer::Style {
+                        &iced_core::renderer::Style {
                             text_color: state.text_color(),
                         },
                         state.cursor_position(),
@@ -641,7 +642,7 @@ pub fn build_user_interface<'a, A: Application>(
     debug: &mut Debug,
 ) -> UserInterface<'a, A::Message, A::Renderer>
 where
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: StyleSheet,
 {
     debug.view_started();
     let view = application.view();
@@ -670,7 +671,7 @@ pub fn update<A: Application, E: Executor>(
     window_subs: &mut WindowSubs<A::Message>,
     window_queue: &mut WindowQueue,
 ) where
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: StyleSheet,
 {
     for message in messages.drain(..) {
         debug.log_message(&message);
@@ -702,7 +703,7 @@ pub fn run_command<A, E>(
     cache: &mut user_interface::Cache,
     state: &State<A>,
     renderer: &mut A::Renderer,
-    command: Command<A::Message>,
+    command: iced_runtime::Command<A::Message>,
     runtime: &mut Runtime<E, Proxy<A::Message>, A::Message>,
     clipboard: &mut Clipboard,
     debug: &mut Debug,
@@ -710,10 +711,9 @@ pub fn run_command<A, E>(
 ) where
     A: Application,
     E: Executor,
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: StyleSheet,
 {
-    use iced_native::command;
-    use iced_native::Clipboard;
+    use iced_runtime::Command;
 
     for action in command.actions() {
         match action {
@@ -734,7 +734,7 @@ pub fn run_command<A, E>(
             },
             command::Action::Widget(action) => {
                 let mut current_cache = std::mem::take(cache);
-                let mut current_operation = Some(action.into_operation());
+                let mut current_operation = Some(action);
 
                 let mut user_interface = build_user_interface(
                     application,

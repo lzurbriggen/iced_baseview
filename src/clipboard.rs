@@ -3,10 +3,7 @@
 use std::cell::RefCell;
 
 use copypasta::{ClipboardContext, ClipboardProvider};
-
-use crate::command::{self, Command};
-
-pub use iced_native::clipboard::Action;
+use iced_runtime::{command, Command};
 
 /// A `copypasta` wrapper for iced's clipboard abstraction.
 #[allow(missing_debug_implementations)]
@@ -28,7 +25,7 @@ impl Default for Clipboard {
     }
 }
 
-impl iced_native::Clipboard for Clipboard {
+impl iced_core::Clipboard for Clipboard {
     fn read(&self) -> Option<String> {
         match &self.clipboard {
             Some(clipboard) => clipboard.borrow_mut().get_contents().ok(),
@@ -48,10 +45,14 @@ impl iced_native::Clipboard for Clipboard {
 
 /// Read the current contents of the clipboard.
 pub fn read<Message>(f: impl Fn(Option<String>) -> Message + 'static) -> Command<Message> {
-    Command::single(command::Action::Clipboard(Action::Read(Box::new(f))))
+    Command::single(command::Action::Clipboard(
+        iced_runtime::clipboard::Action::Read(Box::new(f)),
+    ))
 }
 
 /// Write the given contents to the clipboard.
 pub fn write<Message>(contents: String) -> Command<Message> {
-    Command::single(command::Action::Clipboard(Action::Write(contents)))
+    Command::single(command::Action::Clipboard(
+        iced_runtime::clipboard::Action::Write(contents),
+    ))
 }

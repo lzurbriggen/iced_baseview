@@ -1,7 +1,8 @@
 use baseview::WindowScalePolicy;
 
+use iced_core::keyboard::Modifiers;
+use iced_core::{Color, Point, Size};
 use iced_graphics::Viewport;
-use iced_native::{Color, Debug, Point, Size};
 
 use crate::application::Application;
 use crate::application::{self, StyleSheet as _};
@@ -12,24 +13,24 @@ use std::marker::PhantomData;
 #[allow(missing_debug_implementations)]
 pub struct State<A: Application>
 where
-    <A::Renderer as iced_native::Renderer>::Theme: application::StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: application::StyleSheet,
 {
     title: String,
     viewport: Viewport,
     viewport_version: usize,
     cursor_position: Point,
-    theme: <A::Renderer as iced_native::Renderer>::Theme,
-    appearance: application::Appearance,
+    theme: <A::Renderer as iced_core::Renderer>::Theme,
+    appearance: iced_style::application::Appearance,
     application: PhantomData<A>,
 
     system_scale_factor: f64,
     scale_policy: WindowScalePolicy,
-    modifiers: iced_core::keyboard::Modifiers,
+    modifiers: Modifiers,
 }
 
 impl<A: Application> State<A>
 where
-    <A::Renderer as iced_native::Renderer>::Theme: application::StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: application::StyleSheet,
 {
     /// Creates a new [`State`] for the provided [`Application`] and window.
     pub fn new(application: &A, viewport: Viewport, scale_policy: WindowScalePolicy) -> Self {
@@ -87,7 +88,7 @@ where
     // }
 
     /// Returns the current theme of the [`State`].
-    pub fn theme(&self) -> &<A::Renderer as iced_native::Renderer>::Theme {
+    pub fn theme(&self) -> &<A::Renderer as iced_core::Renderer>::Theme {
         &self.theme
     }
 
@@ -105,7 +106,7 @@ where
     /// accordingly.
     ///
     /// Does **not** update modifiers.
-    pub fn update(&mut self, event: &baseview::Event, _debug: &mut Debug) {
+    pub fn update(&mut self, event: &baseview::Event, _debug: &mut iced_runtime::Debug) {
         match event {
             baseview::Event::Window(baseview::WindowEvent::Resized(window_info)) => {
                 // Cache system window info in case users changes their scale policy in the future.
@@ -246,7 +247,7 @@ where
         self.appearance = self.theme.appearance(&application.style());
     }
 
-    pub(crate) fn modifiers_mut(&mut self) -> &mut iced_core::keyboard::Modifiers {
+    pub(crate) fn modifiers_mut(&mut self) -> &mut Modifiers {
         &mut self.modifiers
     }
 }

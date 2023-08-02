@@ -1,9 +1,6 @@
-use iced_native::futures::{
-    channel::mpsc,
-    task::{Context, Poll},
-    Sink,
-};
 use std::pin::Pin;
+
+use iced_futures::futures::{channel::mpsc, task::Context, task::Poll, Sink};
 
 /// An event loop proxy that implements `Sink`.
 #[derive(Debug)]

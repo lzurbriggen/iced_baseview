@@ -23,18 +23,21 @@ wgpu = ["iced_wgpu"]
 # feature.
 glow = ["iced_glow", "baseview/opengl"]
 # Enables a debug view in native platforms (press F12)
-debug = ["iced_native/debug"]
+# TODO: debug = ["iced_native/debug"]
 # Enables the `Image` widget
 image = ["iced_wgpu?/image", "iced_glow?/image"]
 # Enables the `Svg` widget
 svg = ["iced_wgpu?/svg", "iced_glow?/svg"]
 # Enables the `Canvas` widget
-canvas = ["iced_wgpu?/canvas", "iced_glow?/canvas"]
+# canvas = ["iced_wgpu?/canvas", "iced_glow?/canvas"]
 # Enables the `QRCode` widget
-qr_code = ["iced_wgpu?/qr_code", "iced_glow?/qr_code"]
+qr_code = [
+  # "iced_wgpu?/qr_code", 
+  "iced_glow?/qr_code",
+]
 # Enables using system fonts
 default_system_font = [
-  "iced_wgpu?/default_system_font",
+  # "iced_wgpu?/default_system_font",
   "iced_glow?/default_system_font",
 ]
 # Enables advanced color conversion via `palette`
@@ -50,12 +53,13 @@ smol = ["iced_futures/smol"]
 baseview = { git = "https://github.com/RustAudio/baseview.git", rev = "1d9806d" }
 cfg-if = "1"
 copypasta = "0.8"
-iced_core = "0.9"
-iced_futures = "0.6"
+iced_core = "0.10"
+iced_futures = "0.7"
 iced_glow = { version = "0.8", optional = true }
-iced_graphics = "0.8"
-iced_native = "0.10"
-iced_wgpu = { version = "0.10", optional = true }
+iced_graphics = "0.9"
+iced_runtime = "0.1.0"
+iced_style = "0.9.0"
+iced_wgpu = { version = "0.11", optional = true }
 keyboard-types = { version = "0.6", default-features = false }
 log = "0.4"
 raw-window-handle = "0.4"

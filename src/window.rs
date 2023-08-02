@@ -1,11 +1,12 @@
 use std::{cell::RefCell, pin::Pin, rc::Rc};
 
 use baseview::{Event, EventStatus, Window, WindowHandler, WindowOpenOptions};
+use iced_core::Renderer;
 use iced_futures::futures::{
     self,
     channel::mpsc::{self, SendError},
 };
-use iced_native::application::StyleSheet;
+use iced_style::application::StyleSheet;
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 use crate::{application::run, application::Application, Settings};
@@ -21,7 +22,7 @@ pub(crate) enum RuntimeEvent<Message: 'static + Send> {
 pub(crate) struct IcedWindow<A>
 where
     A: Application + Send + 'static,
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as Renderer>::Theme: StyleSheet,
     // E: Executor + 'static,
     // C: window::Compositor<Renderer = A::Renderer> + 'static,
 {
@@ -38,7 +39,7 @@ where
 impl<A> IcedWindow<A>
 where
     A: Application + Send + 'static,
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as Renderer>::Theme: StyleSheet,
 {
     /// There's no clone implementation, but this is fine.
     fn clone_window_options(window: &WindowOpenOptions) -> WindowOpenOptions {
@@ -161,7 +162,7 @@ where
 impl<A> WindowHandler for IcedWindow<A>
 where
     A: Application + Send + 'static,
-    <A::Renderer as iced_native::Renderer>::Theme: StyleSheet,
+    <A::Renderer as Renderer>::Theme: StyleSheet,
 {
     fn on_frame(&mut self, window: &mut Window<'_>) {
         if self.processed_close_signal {

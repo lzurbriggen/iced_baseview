@@ -39,7 +39,7 @@ pub mod baseview {
 
 pub mod executor {
     //! Choose your preferred executor to power your application.
-    pub use iced_native::Executor;
+    pub use iced_futures::Executor;
 
     /// A default cross-platform executor.
     ///
@@ -61,17 +61,10 @@ pub mod time {
     pub use iced_futures::backend::default::time::*;
 }
 
-#[doc(no_inline)]
-pub use iced_native::{
-    alignment, command, event, keyboard, mouse, overlay, subscription, Alignment, Background,
-    Color, Command, ContentFit, Debug, Event, Font, Hasher, Layout, Length, Overlay, Padding,
-    Point, Rectangle, Size, Subscription, Vector,
-};
-
 cfg_if::cfg_if! {
     if #[cfg(feature = "wgpu")] {
         pub use iced_wgpu as renderer;
-        use iced_graphics::window::Compositor as IGCompositor;
+        use iced_graphics::Compositor as IGCompositor;
     } else {
         pub use iced_glow as renderer;
         use iced_graphics::window::GLCompositor as IGCompositor;
@@ -88,7 +81,7 @@ use window::{IcedWindow, WindowQueue, WindowSubs};
 ///
 /// This is an alias of an `iced_native` element with a default `Renderer`.
 pub type Element<'a, Message, Theme> =
-    iced_native::Element<'a, Message, crate::renderer::Renderer<Theme>>;
+    iced_core::Element<'a, Message, crate::renderer::Renderer<Theme>>;
 
 pub trait Application: Sized + Send {
     /// The [`Executor`] that will run commands and subscriptions.
@@ -97,13 +90,13 @@ pub trait Application: Sized + Send {
     ///
     /// [`Executor`]: Self::Executor
     /// [default executor]: crate::executor::Default
-    type Executor: iced_native::Executor;
+    type Executor: iced_futures::Executor;
 
     /// The type of __messages__ your [`Application`] will produce.
     type Message: std::fmt::Debug + Send;
 
     /// The theme of your [`Application`].
-    type Theme: Default + iced_native::application::StyleSheet;
+    type Theme: Default + iced_style::application::StyleSheet;
 
     /// The data needed to initialize your [`Application`].
     type Flags: Send;
@@ -118,7 +111,7 @@ pub trait Application: Sized + Send {
     /// load state from a file, perform an initial HTTP request, etc.
     ///
     /// [`run`]: Self::run
-    fn new(flags: Self::Flags) -> (Self, iced_native::Command<Self::Message>);
+    fn new(flags: Self::Flags) -> (Self, iced_runtime::Command<Self::Message>);
 
     /// Returns the current title of the [`Application`].
     ///
@@ -137,7 +130,7 @@ pub trait Application: Sized + Send {
         &mut self,
         window: &mut WindowQueue,
         message: Self::Message,
-    ) -> iced_native::Command<Self::Message>;
+    ) -> iced_runtime::Command<Self::Message>;
 
     /// Returns the widgets to display in the [`Application`].
     ///
@@ -154,8 +147,8 @@ pub trait Application: Sized + Send {
     /// Returns the current `Style` of the [`Theme`].
     ///
     /// [`Theme`]: Self::Theme
-    fn style(&self) -> <Self::Theme as iced_native::application::StyleSheet>::Style {
-        <Self::Theme as iced_native::application::StyleSheet>::Style::default()
+    fn style(&self) -> <Self::Theme as iced_style::application::StyleSheet>::Style {
+        <Self::Theme as iced_style::application::StyleSheet>::Style::default()
     }
 
     /// Returns the event [`Subscription`] for the current state of the
@@ -169,8 +162,8 @@ pub trait Application: Sized + Send {
     fn subscription(
         &self,
         _window_subs: &mut WindowSubs<Self::Message>,
-    ) -> iced_native::Subscription<Self::Message> {
-        iced_native::Subscription::none()
+    ) -> iced_futures::Subscription<Self::Message> {
+        iced_futures::Subscription::none()
     }
 
     /// Returns the [`WindowScalePolicy`] that the [`Application`] should use.
@@ -210,7 +203,7 @@ where
     type Renderer = renderer::Renderer<A::Theme>;
     type Message = A::Message;
 
-    fn new(flags: Self::Flags) -> (Self, iced_native::Command<A::Message>) {
+    fn new(flags: Self::Flags) -> (Self, iced_runtime::Command<A::Message>) {
         let (app, command) = A::new(flags);
 
         (Instance(app), command)
@@ -224,25 +217,25 @@ where
         self.0.theme()
     }
 
-    fn style(&self) -> <A::Theme as iced_native::application::StyleSheet>::Style {
+    fn style(&self) -> <A::Theme as iced_style::application::StyleSheet>::Style {
         self.0.style()
     }
     fn update(
         &mut self,
         window: &mut WindowQueue,
         message: Self::Message,
-    ) -> iced_native::Command<Self::Message> {
+    ) -> iced_runtime::Command<Self::Message> {
         self.0.update(window, message)
     }
 
-    fn view(&self) -> iced_native::Element<'_, Self::Message, Self::Renderer> {
+    fn view(&self) -> iced_core::Element<'_, Self::Message, Self::Renderer> {
         self.0.view()
     }
 
     fn subscription(
         &self,
         window_subs: &mut WindowSubs<A::Message>,
-    ) -> iced_native::Subscription<Self::Message> {
+    ) -> iced_futures::Subscription<Self::Message> {
         self.0.subscription(window_subs)
     }
 
