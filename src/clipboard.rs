@@ -57,7 +57,7 @@ impl Clipboard {
     }
 }
 
-impl crate::core::Clipboard for Clipboard {
+impl iced_core::Clipboard for Clipboard {
     fn read(&self) -> Option<String> {
         self.read()
     }

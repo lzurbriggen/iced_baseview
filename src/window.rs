@@ -1,11 +1,10 @@
 use std::{cell::RefCell, pin::Pin, rc::Rc, sync::Arc};
 
 use baseview::{Event, EventStatus, Window, WindowHandler, WindowOpenOptions};
-use iced_runtime::futures::futures::{
-    self,
-    channel::mpsc::{self, SendError},
-};
-use iced_style::application::StyleSheet;
+use iced::futures::channel::mpsc::SendError;
+// use iced::{application::StyleSheet, futures::channel::mpsc::SendError};
+use iced_futures::futures::channel::mpsc;
+use iced_runtime::futures::futures::{self};
 use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
 
 use crate::{application::run, application::Application, Settings};
@@ -21,7 +20,7 @@ pub enum RuntimeEvent<Message: 'static + Send> {
 pub struct IcedWindow<A>
 where
     A: Application + Send + 'static,
-    <A::Renderer as iced_runtime::core::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_runtime::core::Renderer>::Theme: iced_style::application::StyleSheet,
     // E: Executor + 'static,
     // C: window::Compositor<Renderer = A::Renderer> + 'static,
 {
@@ -39,7 +38,7 @@ impl<A> IcedWindow<A>
 where
     A: Application + Send + 'static,
     <A as Application>::Flags: std::marker::Send,
-    <A::Renderer as iced_runtime::core::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_runtime::core::Renderer>::Theme: iced_style::application::StyleSheet,
 {
     /// There's no clone implementation, but this is fine.
     fn clone_window_options(window: &WindowOpenOptions) -> WindowOpenOptions {
@@ -55,7 +54,7 @@ where
     pub fn open_blocking<E, C>(#[allow(unused_mut)] mut settings: Settings<A::Flags>)
     where
         E: iced_runtime::futures::Executor + 'static,
-        C: iced_graphics::Compositor<Renderer = A::Renderer, Settings = crate::renderer::Settings>
+        C: iced_graphics::Compositor<Renderer = A::Renderer, Settings = iced_renderer::Settings>
             + 'static,
     {
         let (sender, receiver) = mpsc::unbounded();
@@ -78,7 +77,7 @@ where
     ) -> WindowHandle<A::Message>
     where
         E: iced_runtime::futures::Executor + 'static,
-        C: iced_graphics::Compositor<Renderer = A::Renderer, Settings = crate::renderer::Settings>
+        C: iced_graphics::Compositor<Renderer = A::Renderer, Settings = iced_renderer::Settings>
             + 'static,
         P: HasRawWindowHandle,
     {
@@ -100,7 +99,7 @@ where
 impl<A> WindowHandler for IcedWindow<A>
 where
     A: Application + Send + 'static,
-    <A::Renderer as iced_runtime::core::Renderer>::Theme: StyleSheet,
+    <A::Renderer as iced_runtime::core::Renderer>::Theme: iced_style::application::StyleSheet,
 {
     fn on_frame(&mut self, window: &mut Window<'_>) {
         if self.processed_close_signal {

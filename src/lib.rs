@@ -17,13 +17,19 @@
 #![forbid(rust_2018_idioms)]
 #![allow(clippy::inherent_to_string, clippy::type_complexity)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
-use graphics::core::Element;
-pub use iced_graphics as graphics;
+use iced_core::Element;
+pub use iced_futures;
+// pub use iced::
+// TODO: pub use iced_graphics as graphics;
+// TODO: pub use iced_runtime as runtime;
+// TODO: pub use iced_runtime::core;
+// TODO: pub use iced_runtime::futures;
+// TODO: pub use iced_style as style;
+// TODO: pub use iced_widget as widget;
+pub use iced::widget;
+pub use iced_core as core;
 pub use iced_runtime as runtime;
-pub use iced_runtime::core;
-pub use iced_runtime::futures;
 pub use iced_style as style;
-pub use iced_widget as widget;
 
 mod application;
 pub mod clipboard;
@@ -42,28 +48,31 @@ mod proxy;
 pub use application::Profiler;
 pub use clipboard::Clipboard;
 pub use error::Error;
+use iced_futures::Executor;
+use iced_futures::Subscription;
+use iced_runtime::Command;
 pub use position::Position;
 pub use proxy::Proxy;
-use runtime::futures::Executor;
-use runtime::futures::Subscription;
-use runtime::Command;
 pub use settings::Settings;
 
-pub use iced_graphics::Viewport;
-use style::application::StyleSheet;
+// TODO: pub use iced_graphics::Viewport;
+// TODO: pub use iced::
+// TODO: use iced::::style::application::StyleSheet;
 
 pub mod baseview {
     pub use baseview::{Size, WindowOpenOptions, WindowScalePolicy};
 }
 
-use iced_widget::renderer;
+use iced_style::application::StyleSheet;
+
+// TODO: use iced_widget::renderer;
 use window::WindowSubs;
 
-pub type Renderer<Theme = style::Theme> = renderer::Renderer<Theme>;
+pub type Renderer<Theme = iced::Theme> = iced_renderer::Renderer<Theme>;
 
 pub mod executor {
     //! Choose your preferred executor to power your application.
-    pub use iced_runtime::futures::Executor;
+    // TODO: pub use iced_runtime::futures::Executor;
 
     /// A default cross-platform executor.
     ///
@@ -75,7 +84,7 @@ pub mod executor {
     ///   - `iced_futures::backend::native::thread_pool` otherwise.
     ///
     /// - On Wasm, it will use `iced_futures::backend::wasm::wasm_bindgen`.
-    pub type Default = iced_runtime::futures::backend::default::Executor;
+    pub type Default = iced_runtime::futures::backend::null::Executor;
 }
 
 pub trait Application: Sized + std::marker::Send {
@@ -91,7 +100,7 @@ pub trait Application: Sized + std::marker::Send {
     type Message: std::fmt::Debug + Send;
 
     /// The theme of your [`Application`].
-    type Theme: Default + StyleSheet;
+    type Theme: Default + iced::application::StyleSheet;
 
     /// The data needed to initialize your [`Application`].
     type Flags: std::marker::Send;
@@ -139,8 +148,8 @@ pub trait Application: Sized + std::marker::Send {
     /// Returns the current `Style` of the [`Theme`].
     ///
     /// [`Theme`]: Self::Theme
-    fn style(&self) -> <Self::Theme as StyleSheet>::Style {
-        <Self::Theme as StyleSheet>::Style::default()
+    fn style(&self) -> <Self::Theme as iced::application::StyleSheet>::Style {
+        <Self::Theme as iced::application::StyleSheet>::Style::default()
     }
 
     /// Returns the event [`Subscription`] for the current state of the
@@ -167,14 +176,14 @@ pub trait Application: Sized + std::marker::Send {
         baseview::WindowScalePolicy::SystemScaleFactor
     }
 
-    fn renderer_settings() -> renderer::Settings {
+    fn renderer_settings() -> iced_renderer::Settings {
         Default::default()
     }
 }
 
 struct Instance<A: Application>(A);
 
-impl<A> crate::runtime::Program for Instance<A>
+impl<A> iced_runtime::Program for Instance<A>
 where
     A: Application,
 {
@@ -217,7 +226,7 @@ where
     fn subscription(
         &self,
         window_subs: &mut WindowSubs<A::Message>,
-    ) -> runtime::futures::Subscription<Self::Message> {
+    ) -> iced::Subscription<Self::Message> {
         self.0.subscription(window_subs)
     }
 
@@ -225,7 +234,7 @@ where
         self.0.scale_policy()
     }
 
-    fn renderer_settings() -> crate::renderer::Settings {
+    fn renderer_settings() -> iced_renderer::Settings {
         A::renderer_settings()
     }
 }
@@ -239,9 +248,11 @@ where
     A: Application + 'static,
     P: raw_window_handle::HasRawWindowHandle,
 {
-    window::IcedWindow::<Instance<A>>::open_parented::<A::Executor, renderer::Compositor<A::Theme>, P>(
-        parent, settings,
-    )
+    window::IcedWindow::<Instance<A>>::open_parented::<
+        A::Executor,
+        iced_renderer::Compositor<A::Theme>,
+        P,
+    >(parent, settings)
 }
 
 /// Runs the [`Application`]. Open a new window that blocks the current thread until the window is destroyed.
@@ -251,7 +262,8 @@ pub fn open_blocking<A>(settings: Settings<A::Flags>)
 where
     A: Application + 'static,
 {
-    window::IcedWindow::<Instance<A>>::open_blocking::<A::Executor, renderer::Compositor<A::Theme>>(
-        settings,
-    );
+    window::IcedWindow::<Instance<A>>::open_blocking::<
+        A::Executor,
+        iced_renderer::Compositor<A::Theme>,
+    >(settings);
 }

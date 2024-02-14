@@ -2,11 +2,10 @@ use baseview::WindowScalePolicy;
 
 use crate::application::Application;
 use crate::application::{self, StyleSheet as _};
-use crate::core;
-use crate::core::mouse;
-use crate::core::{Color, Size};
-use crate::graphics::Viewport;
-use crate::runtime::Debug;
+use iced::mouse;
+use iced_core::{Color, Size};
+use iced_graphics::Viewport;
+use iced_runtime::Debug;
 
 use std::marker::PhantomData;
 
@@ -14,13 +13,13 @@ use std::marker::PhantomData;
 #[allow(missing_debug_implementations)]
 pub struct State<A: Application>
 where
-    <A::Renderer as core::Renderer>::Theme: application::StyleSheet,
+    A::Renderer::Theme: application::StyleSheet,
 {
     title: String,
     viewport: Viewport,
     viewport_version: usize,
     cursor_position: Option<iced_runtime::core::Point>,
-    theme: <A::Renderer as core::Renderer>::Theme,
+    theme: <A::Renderer as iced_core::Renderer>::Theme,
     appearance: application::Appearance,
     application: PhantomData<A>,
 
@@ -31,7 +30,7 @@ where
 
 impl<A: Application> State<A>
 where
-    <A::Renderer as core::Renderer>::Theme: application::StyleSheet,
+    <A::Renderer as iced_core::Renderer>::Theme: application::StyleSheet,
 {
     /// Creates a new [`State`] for the provided [`Application`] and window.
     pub fn new(application: &A, viewport: Viewport) -> Self {
@@ -85,7 +84,7 @@ where
     }
 
     /// Returns the current theme of the [`State`].
-    pub fn theme(&self) -> &<A::Renderer as core::Renderer>::Theme {
+    pub fn theme(&self) -> &<A::Renderer as iced_core::Renderer>::Theme {
         &self.theme
     }
 
@@ -126,7 +125,7 @@ where
                 position,
                 modifiers: _,
             }) => {
-                self.cursor_position = Some(crate::core::Point {
+                self.cursor_position = Some(iced_core::Point {
                     x: position.x as f32,
                     y: position.y as f32,
                 });

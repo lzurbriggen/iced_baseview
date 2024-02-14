@@ -16,23 +16,33 @@ categories = ["gui"]
 
 [features]
 # Enables a debug view in native platforms (press F12)
-debug = ["iced_runtime/debug"]
+debug = [] # TODO: "iced_runtime/debug"
 # Enable the wgu renderer
-wgpu = ["iced_renderer/wgpu"]
-image = ["iced_widget/image"]
-svg = ["iced_widget/svg"]
-canvas = ["iced_widget/canvas"]
+wgpu = []   # TODO: "iced_renderer/wgpu"
+image = []  # TODO: "iced_widget/image"
+svg = []    # TODO: "iced_widget/svg"
+canvas = [] # TODO: "iced_widget/canvas"
 
 [dependencies]
 baseview = { git = "https://github.com/RustAudio/baseview.git", rev = "fdb43ea" }
 cfg-if = "1"
 copypasta = "0.8"
-iced_runtime = "0.1"
-iced_renderer = "0.1"
-iced_graphics = "0.9"
-iced_style = "0.9"
-iced_widget = "0.1"
+# iced_runtime = "0.1"
+# iced_renderer = "0.1"
+# iced_graphics = "0.9"
+# iced_style = "0.9"
+# iced_widget = "0.1"
 keyboard-types = { version = "0.6", default-features = false }
 log = "0.4"
 raw-window-handle = "0.5"
 thiserror = "1.0"
+iced = { version = "0.10.0", default-features = false, features = [
+  "wgpu",
+  "advanced",
+] }
+iced_runtime = "0.1.1"
+iced_renderer = "0.1.0"
+iced_graphics = "0.9.0"
+iced_core = "0.10.0"
+iced_futures = "0.7.0"
+iced_style = "0.9.0"

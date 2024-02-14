@@ -12,7 +12,10 @@ use iced_baseview::{
     Application, Settings,
 };
 use iced_runtime::window::Action;
-use std::{sync::Arc, time::{Duration, Instant}};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 static COUNT_INTERVAL: Duration = Duration::from_millis(1000);
 
@@ -89,9 +92,7 @@ impl Application for MyProgram {
         Command::none()
     }
 
-    fn view(
-        &self,
-    ) -> Element<'_, Self::Message, iced_baseview::widget::renderer::Renderer<Self::Theme>> {
+    fn view(&self) -> Element<'_, Self::Message, iced_renderer::Renderer<Self::Theme>> {
         let content = Column::new()
             .width(Length::Fill)
             .align_items(Alignment::Center)

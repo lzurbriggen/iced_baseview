@@ -6,23 +6,24 @@ mod state;
 use baseview::EventStatus;
 pub use state::State;
 
-use crate::core;
-use crate::core::mouse;
-use crate::core::renderer;
-use crate::core::widget::operation;
-use crate::core::Size;
-use crate::futures::futures;
-use crate::futures::{Executor, Runtime, Subscription};
-use crate::graphics::compositor::{self, Compositor};
-use crate::runtime::clipboard;
-use crate::runtime::program::Program;
-use crate::runtime::user_interface::{self, UserInterface};
-use crate::runtime::{Command, Debug};
-use crate::style::application::{Appearance, StyleSheet};
 use crate::window::{IcedWindow, RuntimeEvent, WindowQueue, WindowSubs};
 use crate::{Clipboard, Error, Proxy, Settings};
+use core::mouse;
+use core::renderer;
+use core::widget::operation;
+use core::Size;
+use iced::application::{Appearance, StyleSheet};
+use iced::{Executor, Subscription};
+use iced_core as core;
+use iced_futures;
+use iced_futures::Runtime;
+use iced_graphics::compositor::{self, Compositor};
+use iced_runtime::clipboard;
+use iced_runtime::user_interface::{self, UserInterface};
+use iced_runtime::Program;
+use iced_runtime::{Command, Debug};
 
-use futures::channel::mpsc;
+use iced_futures::futures::channel::mpsc;
 
 use std::cell::RefCell;
 use std::mem::ManuallyDrop;
@@ -46,7 +47,7 @@ use tracing::{info_span, instrument::Instrument};
 /// can be toggled by pressing `F12`.
 pub trait Application: Program
 where
-    <Self::Renderer as core::Renderer>::Theme: StyleSheet,
+    Self::Theme: StyleSheet,
 {
     /// The data needed to initialize your [`Application`].
     type Flags;
@@ -68,10 +69,10 @@ where
     fn title(&self) -> String;
 
     /// Returns the current `Theme` of the [`Application`].
-    fn theme(&self) -> <Self::Renderer as core::Renderer>::Theme;
+    fn theme(&self) -> Self::Theme;
 
     /// Returns the `Style` variation of the `Theme`.
-    fn style(&self) -> <<Self::Renderer as core::Renderer>::Theme as StyleSheet>::Style {
+    fn style(&self) -> <Self::Theme as StyleSheet>::Style {
         Default::default()
     }
 
@@ -107,7 +108,7 @@ where
         baseview::WindowScalePolicy::SystemScaleFactor
     }
 
-    fn renderer_settings() -> crate::renderer::Settings;
+    fn renderer_settings() -> iced_renderer::Settings;
 }
 
 /// Runs an [`Application`] with an executor, compositor, and the provided
@@ -122,11 +123,9 @@ pub fn run<A, E, C>(
 where
     A: Application + 'static + Send,
     E: Executor + 'static,
-    C: Compositor<Renderer = A::Renderer, Settings = crate::renderer::Settings> + 'static,
-    <A::Renderer as core::Renderer>::Theme: StyleSheet,
+    C: Compositor<Renderer = A::Renderer> + 'static,
+    A::Theme: StyleSheet,
 {
-    use futures::task;
-
     #[cfg(feature = "trace")]
     let _guard = Profiler::init();
 
@@ -175,7 +174,7 @@ where
     );
 
     for font in settings.fonts {
-        use crate::core::text::Renderer;
+        use core::text::Renderer;
 
         renderer.load_font(font);
     }
@@ -207,7 +206,8 @@ where
         run_instance
     });
 
-    let runtime_context = task::Context::from_waker(task::noop_waker_ref());
+    let runtime_context =
+        iced::futures::task::Context::from_waker(iced::futures::task::noop_waker_ref());
 
     Ok(IcedWindow {
         sender: event_sender,
@@ -241,8 +241,6 @@ async fn run_instance<A, E, C>(
     C: Compositor<Renderer = A::Renderer> + 'static,
     <A::Renderer as core::Renderer>::Theme: StyleSheet,
 {
-    use futures::stream::StreamExt;
-
     let mut viewport_version = state.viewport_version();
 
     let mut clipboard = Clipboard::new();
@@ -505,7 +503,7 @@ async fn run_instance<A, E, C>(
                 if do_send_status {
                     let mut final_status = EventStatus::Ignored;
                     for status in &statuses {
-                        if let crate::core::event::Status::Captured = status {
+                        if let core::event::Status::Captured = status {
                             final_status = EventStatus::Captured;
                             break;
                         }
@@ -573,9 +571,9 @@ pub fn build_user_interface<'a, A: Application>(
     renderer: &mut A::Renderer,
     size: Size,
     debug: &mut Debug,
-) -> UserInterface<'a, A::Message, A::Renderer>
+) -> UserInterface<'a, A::Message, A::Theme, A::Renderer>
 where
-    <A::Renderer as core::Renderer>::Theme: StyleSheet,
+    A::Theme: StyleSheet,
 {
     #[cfg(feature = "trace")]
     let view_span = info_span!("Application", "VIEW").entered();
@@ -615,7 +613,7 @@ pub fn update<A: Application, E: Executor>(
     window_subs: &mut WindowSubs<A::Message>,
     window_queue: &mut WindowQueue,
 ) where
-    <A::Renderer as core::Renderer>::Theme: StyleSheet,
+    A::Theme: StyleSheet,
 {
     for message in messages.drain(..) {
         #[cfg(feature = "trace")]
@@ -663,7 +661,7 @@ pub fn run_command<A, E>(
     E: Executor,
     <A::Renderer as core::Renderer>::Theme: StyleSheet,
 {
-    use crate::runtime::command;
+    use iced_runtime::command;
 
     for action in command.actions() {
         match action {
