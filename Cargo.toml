@@ -24,7 +24,7 @@ svg = []    # TODO: "iced_widget/svg"
 canvas = [] # TODO: "iced_widget/canvas"
 
 [dependencies]
-baseview = { git = "https://github.com/RustAudio/baseview.git", rev = "fdb43ea" }
+baseview = { git = "https://github.com/lzurbriggen/baseview.git", rev = "a1f1b78" }
 cfg-if = "1"
 copypasta = "0.8"
 # iced_runtime = "0.1"
@@ -32,17 +32,18 @@ copypasta = "0.8"
 # iced_graphics = "0.9"
 # iced_style = "0.9"
 # iced_widget = "0.1"
-keyboard-types = { version = "0.6", default-features = false }
+keyboard-types = { version = "0.7", default-features = false }
 log = "0.4"
-raw-window-handle = "0.5"
+raw-window-handle = "0.6"
 thiserror = "1.0"
-iced = { version = "0.10.0", default-features = false, features = [
-  "wgpu",
-  "advanced",
-] }
-iced_runtime = "0.1.1"
-iced_renderer = "0.1.0"
-iced_graphics = "0.9.0"
-iced_core = "0.10.0"
-iced_futures = "0.7.0"
-iced_style = "0.9.0"
+# iced = { version = "0.10.0", default-features = false, features = [
+#   "wgpu",
+#   "advanced",
+# ] }
+iced_runtime = { git = "https://github.com/iced-rs/iced.git", version = "0.12" }
+iced_renderer = { git = "https://github.com/iced-rs/iced.git", version = "0.12" }
+iced_graphics = { git = "https://github.com/iced-rs/iced.git", version = "0.12" }
+iced_core = { git = "https://github.com/iced-rs/iced.git", version = "0.12" }
+iced_futures = { git = "https://github.com/iced-rs/iced.git", version = "0.12" }
+iced_style = { git = "https://github.com/iced-rs/iced.git", version = "0.12" }
+iced_widget = { git = "https://github.com/iced-rs/iced.git", version = "0.12" }

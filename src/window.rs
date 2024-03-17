@@ -1,11 +1,10 @@
 use std::{cell::RefCell, pin::Pin, rc::Rc, sync::Arc};
 
 use baseview::{Event, EventStatus, Window, WindowHandler, WindowOpenOptions};
-use iced::futures::channel::mpsc::SendError;
 // use iced::{application::StyleSheet, futures::channel::mpsc::SendError};
-use iced_futures::futures::channel::mpsc;
+use iced_futures::futures::channel::mpsc::{self, SendError};
 use iced_runtime::futures::futures::{self};
-use raw_window_handle::{HasRawWindowHandle, RawWindowHandle};
+use raw_window_handle::{HasRawWindowHandle, HasWindowHandle, RawWindowHandle};
 
 use crate::{application::run, application::Application, Settings};
 
@@ -20,7 +19,7 @@ pub enum RuntimeEvent<Message: 'static + Send> {
 pub struct IcedWindow<A>
 where
     A: Application + Send + 'static,
-    <A::Renderer as iced_runtime::core::Renderer>::Theme: iced_style::application::StyleSheet,
+    A::Theme: iced_style::application::StyleSheet,
     // E: Executor + 'static,
     // C: window::Compositor<Renderer = A::Renderer> + 'static,
 {
@@ -38,7 +37,7 @@ impl<A> IcedWindow<A>
 where
     A: Application + Send + 'static,
     <A as Application>::Flags: std::marker::Send,
-    <A::Renderer as iced_runtime::core::Renderer>::Theme: iced_style::application::StyleSheet,
+    A::Theme: iced_style::application::StyleSheet,
 {
     /// There's no clone implementation, but this is fine.
     fn clone_window_options(window: &WindowOpenOptions) -> WindowOpenOptions {
@@ -62,7 +61,9 @@ where
         Window::open_blocking(
             Self::clone_window_options(&settings.window),
             move |window: &mut baseview::Window<'_>| -> IcedWindow<A> {
-                run::<A, E, C>(window, settings, sender, receiver).expect("Launch window")
+                // TODO: compositor settings?
+                run::<A, E, C>(window, settings, compositor_settings, sender, receiver)
+                    .expect("Launch window")
             },
         );
     }
@@ -79,7 +80,7 @@ where
         E: iced_runtime::futures::Executor + 'static,
         C: iced_graphics::Compositor<Renderer = A::Renderer, Settings = iced_renderer::Settings>
             + 'static,
-        P: HasRawWindowHandle,
+        P: HasWindowHandle,
     {
         let (sender, receiver) = mpsc::unbounded();
         let sender_clone = sender.clone();
@@ -88,7 +89,15 @@ where
             parent,
             Self::clone_window_options(&settings.window),
             move |window: &mut baseview::Window<'_>| -> IcedWindow<A> {
-                run::<A, E, C>(window, settings, sender_clone, receiver).expect("Launch window")
+                // TODO: compositor settings?
+                run::<A, E, C>(
+                    window,
+                    settings,
+                    compositor_settings,
+                    sender_clone,
+                    receiver,
+                )
+                .expect("Launch window")
             },
         );
 
@@ -99,7 +108,7 @@ where
 impl<A> WindowHandler for IcedWindow<A>
 where
     A: Application + Send + 'static,
-    <A::Renderer as iced_runtime::core::Renderer>::Theme: iced_style::application::StyleSheet,
+    A::Theme: iced_style::application::StyleSheet,
 {
     fn on_frame(&mut self, window: &mut Window<'_>) {
         if self.processed_close_signal {
@@ -250,9 +259,11 @@ impl<Message: 'static + Send> WindowHandle<Message> {
     }
 }
 
-unsafe impl<Message: 'static + Send> HasRawWindowHandle for WindowHandle<Message> {
-    fn raw_window_handle(&self) -> RawWindowHandle {
-        self.bv_handle.raw_window_handle()
+impl<Message: 'static + Send> HasWindowHandle for WindowHandle<Message> {
+    fn window_handle(
+        &self,
+    ) -> Result<raw_window_handle::WindowHandle<'_>, raw_window_handle::HandleError> {
+        self.bv_handle.window_handle()
     }
 }
 

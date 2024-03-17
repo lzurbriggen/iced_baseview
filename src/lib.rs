@@ -17,6 +17,7 @@
 #![forbid(rust_2018_idioms)]
 #![allow(clippy::inherent_to_string, clippy::type_complexity)]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
+use application::DefaultStyle;
 use iced_core::Element;
 pub use iced_futures;
 // pub use iced::
@@ -26,10 +27,10 @@ pub use iced_futures;
 // TODO: pub use iced_runtime::futures;
 // TODO: pub use iced_style as style;
 // TODO: pub use iced_widget as widget;
-pub use iced::widget;
 pub use iced_core as core;
 pub use iced_runtime as runtime;
 pub use iced_style as style;
+pub use iced_widget as widget;
 
 mod application;
 pub mod clipboard;
@@ -68,7 +69,7 @@ use iced_style::application::StyleSheet;
 // TODO: use iced_widget::renderer;
 use window::WindowSubs;
 
-pub type Renderer<Theme = iced::Theme> = iced_renderer::Renderer<Theme>;
+pub type Renderer = iced_renderer::Renderer;
 
 pub mod executor {
     //! Choose your preferred executor to power your application.
@@ -100,7 +101,7 @@ pub trait Application: Sized + std::marker::Send {
     type Message: std::fmt::Debug + Send;
 
     /// The theme of your [`Application`].
-    type Theme: Default + iced::application::StyleSheet;
+    type Theme: Default + iced_style::application::StyleSheet;
 
     /// The data needed to initialize your [`Application`].
     type Flags: std::marker::Send;
@@ -136,7 +137,7 @@ pub trait Application: Sized + std::marker::Send {
     /// Returns the widgets to display in the [`Application`].
     ///
     /// These widgets can produce __messages__ based on user interaction.
-    fn view(&self) -> Element<'_, Self::Message, crate::Renderer<Self::Theme>>;
+    fn view(&self) -> Element<'_, Self::Message, Self::Theme, crate::Renderer>;
 
     /// Returns the current [`Theme`] of the [`Application`].
     ///
@@ -148,8 +149,8 @@ pub trait Application: Sized + std::marker::Send {
     /// Returns the current `Style` of the [`Theme`].
     ///
     /// [`Theme`]: Self::Theme
-    fn style(&self) -> <Self::Theme as iced::application::StyleSheet>::Style {
-        <Self::Theme as iced::application::StyleSheet>::Style::default()
+    fn style(&self) -> <Self::Theme as iced_style::application::StyleSheet>::Style {
+        <Self::Theme as iced_style::application::StyleSheet>::Style::default()
     }
 
     /// Returns the event [`Subscription`] for the current state of the
@@ -181,20 +182,25 @@ pub trait Application: Sized + std::marker::Send {
     }
 }
 
-struct Instance<A: Application>(A);
+struct Instance<A>(A) where
+A: Application,
+A::Theme: DefaultStyle;
+
 
 impl<A> iced_runtime::Program for Instance<A>
 where
     A: Application,
+    A::Theme: DefaultStyle,
 {
-    type Renderer = crate::Renderer<A::Theme>;
     type Message = A::Message;
+    type Theme = A::Theme;
+    type Renderer = crate::Renderer;
 
     fn update(&mut self, message: Self::Message) -> Command<Self::Message> {
         self.0.update(message)
     }
 
-    fn view(&self) -> Element<'_, Self::Message, Self::Renderer> {
+    fn view(&self) -> Element<'_, Self::Message, Self::Theme, Self::Renderer> {
         self.0.view()
     }
 }
@@ -202,6 +208,7 @@ where
 impl<A> crate::application::Application for Instance<A>
 where
     A: Application,
+    A::Theme: DefaultStyle,
 {
     type Flags = A::Flags;
 
@@ -226,7 +233,7 @@ where
     fn subscription(
         &self,
         window_subs: &mut WindowSubs<A::Message>,
-    ) -> iced::Subscription<Self::Message> {
+    ) -> iced_futures::Subscription<Self::Message> {
         self.0.subscription(window_subs)
     }
 
@@ -246,13 +253,12 @@ pub fn open_parented<A, P>(
 ) -> window::WindowHandle<A::Message>
 where
     A: Application + 'static,
-    P: raw_window_handle::HasRawWindowHandle,
+    A::Theme: DefaultStyle,
+    P: raw_window_handle::HasWindowHandle,
 {
-    window::IcedWindow::<Instance<A>>::open_parented::<
-        A::Executor,
-        iced_renderer::Compositor<A::Theme>,
-        P,
-    >(parent, settings)
+    window::IcedWindow::<Instance<A>>::open_parented::<A::Executor, iced_renderer::Compositor, P>(
+        parent, settings,
+    )
 }
 
 /// Runs the [`Application`]. Open a new window that blocks the current thread until the window is destroyed.
@@ -261,9 +267,9 @@ where
 pub fn open_blocking<A>(settings: Settings<A::Flags>)
 where
     A: Application + 'static,
+    A::Theme: DefaultStyle
 {
-    window::IcedWindow::<Instance<A>>::open_blocking::<
-        A::Executor,
-        iced_renderer::Compositor<A::Theme>,
-    >(settings);
+    window::IcedWindow::<Instance<A>>::open_blocking::<A::Executor, iced_renderer::Compositor>(
+        settings,
+    );
 }

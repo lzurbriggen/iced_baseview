@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 
 use copypasta::ClipboardProvider;
+use iced_core::clipboard::Kind;
 
 /// A buffer for short-term storage and transfer within and between
 /// applications.
@@ -36,7 +37,7 @@ impl Clipboard {
     }
 
     /// Reads the current content of the [`Clipboard`] as text.
-    pub fn read(&self) -> Option<String> {
+    pub fn read(&self, kind: Kind) -> Option<String> {
         match &self.state {
             State::Connected(clipboard) => clipboard.borrow_mut().get_contents().ok(),
             State::Unavailable => None,
@@ -44,7 +45,7 @@ impl Clipboard {
     }
 
     /// Writes the given text contents to the [`Clipboard`].
-    pub fn write(&mut self, contents: String) {
+    pub fn write(&mut self, kind: Kind, contents: String) {
         match &mut self.state {
             State::Connected(clipboard) => match clipboard.borrow_mut().set_contents(contents) {
                 Ok(()) => {}
@@ -58,11 +59,11 @@ impl Clipboard {
 }
 
 impl iced_core::Clipboard for Clipboard {
-    fn read(&self) -> Option<String> {
-        self.read()
+    fn read(&self, kind: Kind) -> Option<String> {
+        self.read(kind)
     }
 
-    fn write(&mut self, contents: String) {
-        self.write(contents)
+    fn write(&mut self, kind: Kind, contents: String) {
+        self.write(kind, contents);
     }
 }

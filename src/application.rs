@@ -4,24 +4,24 @@ mod profiler;
 mod state;
 
 use baseview::EventStatus;
+use iced_futures::futures::StreamExt as _;
+use iced_style::Theme;
 pub use state::State;
 
 use crate::window::{IcedWindow, RuntimeEvent, WindowQueue, WindowSubs};
 use crate::{Clipboard, Error, Proxy, Settings};
 use core::mouse;
-use core::renderer;
 use core::widget::operation;
 use core::Size;
-use iced::application::{Appearance, StyleSheet};
-use iced::{Executor, Subscription};
 use iced_core as core;
-use iced_futures;
-use iced_futures::Runtime;
-use iced_graphics::compositor::{self, Compositor};
+use iced_futures::{self, Executor};
+use iced_futures::{Runtime, Subscription};
+use iced_graphics::compositor;
 use iced_runtime::clipboard;
 use iced_runtime::user_interface::{self, UserInterface};
 use iced_runtime::Program;
 use iced_runtime::{Command, Debug};
+use iced_style::application::{Appearance, StyleSheet};
 
 use iced_futures::futures::channel::mpsc;
 
@@ -114,16 +114,16 @@ where
 /// Runs an [`Application`] with an executor, compositor, and the provided
 /// settings.
 pub fn run<A, E, C>(
-    window: &mut baseview::Window<'_>,
+    window: &baseview::Window<'_>,
     settings: Settings<A::Flags>,
-    // compositor_settings: C::Settings,
+    compositor_settings: C::Settings,
     event_sender: mpsc::UnboundedSender<RuntimeEvent<A::Message>>,
     event_receiver: mpsc::UnboundedReceiver<RuntimeEvent<A::Message>>,
 ) -> Result<IcedWindow<A>, Error>
 where
     A: Application + 'static + Send,
     E: Executor + 'static,
-    C: Compositor<Renderer = A::Renderer> + 'static,
+    C: crate::application::compositor::Compositor<Renderer = A::Renderer> + 'static,
     A::Theme: StyleSheet,
 {
     #[cfg(feature = "trace")]
@@ -165,10 +165,13 @@ where
         runtime.enter(|| A::new(flags))
     };
 
-    let compositor_settings = A::renderer_settings();
-    let (mut compositor, mut renderer) = C::new(compositor_settings, Some(window))?;
+    // let compositor_settings = A::renderer_settings();
+    // let (mut compositor, mut renderer) = C::new(compositor_settings, Some(window))?;
+    let mut compositor = C::new(compositor_settings, Some(window))?;
+    let mut renderer = compositor.create_renderer();
+
     let surface = compositor.create_surface(
-        window,
+        window.clone(),
         viewport.physical_width(),
         viewport.physical_height(),
     );
@@ -206,8 +209,9 @@ where
         run_instance
     });
 
-    let runtime_context =
-        iced::futures::task::Context::from_waker(iced::futures::task::noop_waker_ref());
+    let runtime_context = iced_futures::futures::task::Context::from_waker(
+        iced_futures::futures::task::noop_waker_ref(),
+    );
 
     Ok(IcedWindow {
         sender: event_sender,
@@ -238,8 +242,8 @@ async fn run_instance<A, E, C>(
 ) where
     A: Application + 'static,
     E: Executor + 'static,
-    C: Compositor<Renderer = A::Renderer> + 'static,
-    <A::Renderer as core::Renderer>::Theme: StyleSheet,
+    C: crate::application::compositor::Compositor<Renderer = A::Renderer> + 'static,
+    A::Theme: StyleSheet,
 {
     let mut viewport_version = state.viewport_version();
 
@@ -417,7 +421,7 @@ async fn run_instance<A, E, C>(
                     let new_mouse_interaction = user_interface.draw(
                         &mut renderer,
                         state.theme(),
-                        &renderer::Style {
+                        &iced_core::renderer::Style {
                             text_color: state.text_color(),
                         },
                         state.cursor(),
@@ -659,7 +663,7 @@ pub fn run_command<A, E>(
 ) where
     A: Application,
     E: Executor,
-    <A::Renderer as core::Renderer>::Theme: StyleSheet,
+    A::Theme: StyleSheet,
 {
     use iced_runtime::command;
 
@@ -669,15 +673,15 @@ pub fn run_command<A, E>(
                 runtime.spawn(future);
             }
             command::Action::Clipboard(action) => match action {
-                clipboard::Action::Read(set_clipboard) => {
-                    let message = set_clipboard(clipboard.read());
+                clipboard::Action::Read(tag, kind) => {
+                    let message = tag(clipboard.read(kind));
 
                     // TODO: Is this what you're supposed to do? The winit example sends an event to
                     //       the window which would end up doing the same thing.
-                    runtime.spawn(Box::pin(futures::future::ready(message)));
+                    runtime.spawn(Box::pin(iced_futures::futures::future::ready(message)));
                 }
-                clipboard::Action::Write(contents) => {
-                    clipboard.write(contents);
+                clipboard::Action::Write(contents, kind) => {
+                    clipboard.write(kind, contents);
                 }
             },
             command::Action::Widget(action) => {
@@ -698,7 +702,7 @@ pub fn run_command<A, E>(
                     match operation.finish() {
                         operation::Outcome::None => {}
                         operation::Outcome::Some(message) => {
-                            runtime.spawn(Box::pin(futures::future::ready(message)));
+                            runtime.spawn(Box::pin(iced_futures::futures::future::ready(message)));
                         }
                         operation::Outcome::Chain(next) => {
                             current_operation = Some(next);
@@ -709,7 +713,7 @@ pub fn run_command<A, E>(
                 current_cache = user_interface.into_cache();
                 *cache = current_cache;
             }
-            command::Action::Window(iced_runtime::window::Action::Close) => {
+            command::Action::Window(Close) => {
                 if let Err(_) = window_queue.close_window() {
                     debug.log_message(&"could not send close_window command".to_string())
                 }
@@ -719,3 +723,15 @@ pub fn run_command<A, E>(
         }
     }
 }
+
+/// The default style of an [`Application`].
+pub trait DefaultStyle {
+    /// Returns the default style of an [`Application`].
+    fn default_style(&self) -> Appearance;
+}
+
+// impl DefaultStyle for Application {
+//     fn default_style(&self) -> Appearance {
+//         self.default()
+//     }
+// }
